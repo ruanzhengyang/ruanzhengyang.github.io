@@ -1,113 +1,158 @@
-/**
- * Sets up Justified Gallery.
- */
-if (!!$.prototype.justifiedGallery) {
-  var options = {
-    rowHeight: 140,
-    margins: 4,
-    lastRow: "justify"
-  };
-  $(".article-gallery").justifiedGallery(options);
-}
-
-$(document).ready(function() {
-
-  /**
-   * Shows the responsive navigation menu on mobile.
-   */
-  $("#header > #nav > ul > .icon").click(function() {
-    $("#header > #nav > ul").toggleClass("responsive");
-  });
-
-
-  /**
-   * Controls the different versions of  the menu in blog post articles 
-   * for Desktop, tablet and mobile.
-   */
-  if ($(".post").length) {
-    var menu = $("#menu");
-    var nav = $("#menu > #nav");
-    var menuIcon = $("#menu-icon, #menu-icon-tablet");
-
-    /**
-     * Display the menu on hi-res laptops and desktops.
-     */
-    if ($(document).width() >= 1440) {
-      menu.show();
-      menuIcon.addClass("active");
-    }
-
-    /**
-     * Display the menu if the menu icon is clicked.
-     */
-    menuIcon.click(function() {
-      if (menu.is(":hidden")) {
-        menu.show();
-        menuIcon.addClass("active");
-      } else {
-        menu.hide();
-        menuIcon.removeClass("active");
-      }
-      return false;
-    });
-
-    /**
-     * Add a scroll listener to the menu to hide/show the navigation links.
-     */
-    if (menu.length) {
-      $(window).on("scroll", function() {
-        var topDistance = menu.offset().top;
-
-        // hide only the navigation links on desktop
-        if (!nav.is(":visible") && topDistance < 50) {
-          nav.show();
-        } else if (nav.is(":visible") && topDistance > 100) {
-          nav.hide();
-        }
-
-        // on tablet, hide the navigation icon as well and show a "scroll to top
-        // icon" instead
-        if ( ! $( "#menu-icon" ).is(":visible") && topDistance < 50 ) {
-          $("#menu-icon-tablet").show();
-          $("#top-icon-tablet").hide();
-        } else if (! $( "#menu-icon" ).is(":visible") && topDistance > 100) {
-          $("#menu-icon-tablet").hide();
-          $("#top-icon-tablet").show();
-        }
-      });
-    }
-
-    /**
-     * Show mobile navigation menu after scrolling upwards,
-     * hide it again after scrolling downwards.
-     */
-    if ($( "#footer-post").length) {
-      var lastScrollTop = 0;
-      $(window).on("scroll", function() {
-        var topDistance = $(window).scrollTop();
-
-        if (topDistance > lastScrollTop){
-          // downscroll -> show menu
-          $("#footer-post").hide();
+(() => {
+    var navEl = document.getElementById('theme-nav');
+    navEl.addEventListener('click', (e) => {
+        if (window.innerWidth <= 600) {
+            if (navEl.classList.contains('open')) {
+                navEl.style.height = ''
+            } else {
+                navEl.style.height = 48 + document.querySelector('#theme-nav .nav-items').clientHeight + 'px'
+            }
+            navEl.classList.toggle('open')
         } else {
-          // upscroll -> hide menu
-          $("#footer-post").show();
+            if (navEl.classList.contains('open')) {
+                navEl.style.height = ''
+                navEl.classList.remove('open')
+            }
         }
-        lastScrollTop = topDistance;
-
-        // close all submenu"s on scroll
-        $("#nav-footer").hide();
-        $("#toc-footer").hide();
-        $("#share-footer").hide();
-
-        // show a "navigation" icon when close to the top of the page, 
-        // otherwise show a "scroll to the top" icon
-        if (topDistance < 50) {
-          $("#actions-footer > #top").hide();
-        } else if (topDistance > 100) {
-          $("#actions-footer > #top").show();
+    })
+    window.addEventListener('resize', (e) => {
+        if (navEl.classList.contains('open')) {
+            navEl.style.height = 48 + document.querySelector('#theme-nav .nav-items').clientHeight + 'px'
         }
-      });
+        if (window.innerWidth > 600) {
+            if (navEl.classList.contains('open')) {
+                navEl.style.height = ''
+                navEl.classList.remove('open')
+            }
+        }
+    })
+
+    // a simple solution for managing cookies
+    const Cookies = new class {
+        get(key, fallback) {
+            const temp = document.cookie.split('; ').find(row => row.startsWith(key + '='))
+            if (temp) {
+                return temp.split('=')[1];
+            } else {
+                return fallback
+            }
+        }
+        set(key, value) {
+            document.cookie = key + '=' + value + '; path=' + document.body.getAttribute('data-config-root')
+        }
     }
-  }
-});
+
+    const ColorScheme = new class {
+        constructor() {
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { this.updateCurrent(Cookies.get('color-scheme', 'auto')) })
+        }
+        get() {
+            const stored = Cookies.get('color-scheme', 'auto')
+            this.updateCurrent(stored)
+            return stored
+        }
+        set(value) {
+            bodyEl.setAttribute('data-color-scheme', value)
+            Cookies.set('color-scheme', value)
+            this.updateCurrent(value)
+            return value
+        }
+        updateCurrent(value) {
+            var current = 'light'
+            if (value == 'auto') {
+                if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    current = 'dark'
+                }
+            } else {
+                current = value
+            }
+            document.body.setAttribute('data-current-color-scheme', current)
+        }
+    }
+
+    if (document.getElementById('theme-color-scheme-toggle')) {
+        var bodyEl = document.body
+        var themeColorSchemeToggleEl = document.getElementById('theme-color-scheme-toggle')
+        var options = themeColorSchemeToggleEl.getElementsByTagName('input')
+
+        if (ColorScheme.get()) {
+            bodyEl.setAttribute('data-color-scheme', ColorScheme.get())
+        }
+
+        for (const option of options) {
+            if (option.value == bodyEl.getAttribute('data-color-scheme')) {
+                option.checked = true
+            }
+            option.addEventListener('change', (ev) => {
+                var value = ev.target.value
+                ColorScheme.set(value)
+                for (const o of options) {
+                    if (o.value != value) {
+                        o.checked = false
+                    }
+                }
+            })
+        }
+    }
+
+    if (document.body.attributes['data-rainbow-banner']) {
+        var shown = false
+        switch (document.body.attributes['data-rainbow-banner-shown'].value) {
+            case 'always':
+                shown = true
+                break;
+            case 'auto':
+                shown = new Date().getMonth() + 1 == parseInt(document.body.attributes['data-rainbow-banner-month'].value, 10)
+                break;
+            default:
+                break;
+        }
+        if (shown) {
+            var banner = document.createElement('div')
+
+            banner.style.setProperty('--gradient', `linear-gradient(90deg, ${document.body.attributes['data-rainbow-banner-colors'].value})`)
+            banner.classList.add('rainbow-banner')
+
+            navEl.after(banner)
+        }
+    }
+
+    if (document.body.attributes['data-toc']) {
+        const content = document.getElementsByClassName('content')[0]
+        const maxDepth = document.body.attributes['data-toc-max-depth'].value
+
+        var headingSelector = ''
+        for (var i = 1; i <= maxDepth; i++) {
+            headingSelector += 'h' + i + ','
+        }
+        headingSelector = headingSelector.slice(0, -1)
+        const headings = content.querySelectorAll(headingSelector)
+
+        var source = []
+        headings.forEach((heading) => {
+            source.push({
+                html: heading.innerHTML,
+                href: heading.getElementsByClassName('headerlink')[0].attributes['href'].value
+            })
+        })
+
+        const toc = document.createElement('div')
+        toc.classList.add('toc')
+        for (const i in source) {
+            const item = document.createElement('p')
+            const link = document.createElement('a')
+            link.href = source[i].href
+            link.innerHTML = source[i].html
+            link.removeChild(link.getElementsByClassName('headerlink')[0])
+            item.appendChild(link)
+            toc.appendChild(item)
+        }
+
+        if (toc.children.length != 0) {
+            document.getElementsByClassName('post')[0].getElementsByClassName('divider')[0].after(toc)
+            const divider = document.createElement('div')
+            divider.classList.add('divider')
+            toc.after(divider)
+        }
+    }
+})()
